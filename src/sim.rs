@@ -1,5 +1,5 @@
 use std::default;
-use crate::states::{SimArrays, Entity};
+use crate::states::{SimArrays, Entity, MoveState};
 use rand::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -30,11 +30,11 @@ impl Sim {
 
         let (mut x, mut y) = (0, 0);
 
-        for _ in 0..prey_count {
+        for id in 0..prey_count {
             loop {
                 (x, y) = (rng.gen_range(0..50), rng.gen_range(0..50));
                 if let Entity::None = self.arrays.entity_arr[x][y] {
-                    self.arrays.entity_arr[x][y] = Entity::Prey;
+                    self.arrays.entity_arr[x][y] = Entity::Prey(id);
                     break;
                 } else {
                     continue;
@@ -42,11 +42,11 @@ impl Sim {
             }   
         }
 
-        for _ in 0..pred_count {
+        for id in 0..pred_count {
             loop {
                 (x, y) = (rng.gen_range(0..50), rng.gen_range(0..50));
                 if let Entity::None = self.arrays.entity_arr[x][y] {
-                    self.arrays.entity_arr[x][y] = Entity::Predator;
+                    self.arrays.entity_arr[x][y] = Entity::Predator(id);
                     break;
                 } else {
                     continue;
@@ -56,13 +56,69 @@ impl Sim {
 
         Ok(self)
     }
+
+    fn move_entity(&mut self, row: usize, col: usize) {
+
+        let mut rng = thread_rng();
+
+        match self.arrays.entity_arr[row][col] {
+            Entity::None => panic!("tried to move an empty square"),
+            Entity::Predator(id) => { //TODO add energy
+                if let Entity::Prey(_) = self.arrays.entity_arr[row+1][col] {
+                    self.arrays.entity_arr[row+1][col] = Entity::Predator(id);
+                    self.arrays.entity_arr[row][col] = Entity::None;
+                    self.arrays.moved_arr[row+1][col] = MoveState::Moved;
+                    return;
+                }
+                if let Entity::Prey(_) = self.arrays.entity_arr[row-1][col] {
+                    self.arrays.entity_arr[row-1][col] = Entity::Predator(id);
+                    self.arrays.entity_arr[row][col] = Entity::None;
+                    self.arrays.moved_arr[row-1][col] = MoveState::Moved;
+                    return;
+                }
+                if let Entity::Prey(_) = self.arrays.entity_arr[row][col+1] {
+                    self.arrays.entity_arr[row][col+1] = Entity::Predator(id);
+                    self.arrays.entity_arr[row][col] = Entity::None;
+                    self.arrays.moved_arr[row][col+1] = MoveState::Moved;
+                    return;
+                }
+                if let Entity::Prey(_) = self.arrays.entity_arr[row][col-1] {
+                    self.arrays.entity_arr[row][col-1] = Entity::Predator(id);
+                    self.arrays.entity_arr[row][col] = Entity::None;
+                    self.arrays.moved_arr[row][col-1] = MoveState::Moved;
+                    return;
+                }
+
+                loop {
+                    let x_move: i16 = rng.gen_range(-1..=1);
+                    let y_move: i16 = rng.gen_range(-1..=1);
+                    if let Entity::None = self.arrays.entity_arr[(col as i16 + x_move) as usize][(row as i16 + x_move) as usize] {
+                        self.arrays.entity_arr[(col as i16 + x_move) as usize][(row as i16 + x_move) as usize] = Entity::Predator(id);
+                        self.arrays.entity_arr[row][col] = Entity::None;
+                        self.arrays.moved_arr[(col as i16 + x_move) as usize][(row as i16 + x_move) as usize] = MoveState::Moved;
+                        break;
+                    }
+                }
+            },
+            Entity::Prey(_) => todo!()
+        } 
+        
+    }
+
+    fn update(&mut self) {
+        for row_num in 0..50 {
+            for col_num in 0..50 {
+                if let Entity::Prey(id) = self.arrays.entity_arr[row_num][col_num] {
+                    todo!();
+                }
+            }
+        }
+    }
 }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::sim::EntityOverflowError;
-
     use super::Sim;
 
     #[test]

@@ -9,8 +9,8 @@ pub enum MoveState {
 pub enum Entity {
     #[default]
     None,
-    Predator,
-    Prey,
+    Predator(u32),
+    Prey(u32),
 }
 
 pub struct SimArrays {
